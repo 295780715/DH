@@ -52,7 +52,10 @@ int dehaze_dcp(Mat & src) {
 	// 8.显示
 	imshow("原图", src);
 	imshow("灰度图", gray);
+	imshow("透射图",trans);
 	imshow("暗通道图", dc);
+	imshow("去雾图", hazefree);
+
 	// 调节暗通道窗口
 	UserData ud;
 	ud.data1 = &gray;
@@ -62,7 +65,7 @@ int dehaze_dcp(Mat & src) {
 	int time_total = time_gray + time_dc + time_al + time_t + time_dehaze;
 #ifdef DEBUG
 	// debug信息输出
-	cout << "A:" << airLightPixel.b << airLightPixel.g << airLightPixel.r << endl;
+	cout << "A:" << airLightPixel.b << "," << airLightPixel.g << "," << airLightPixel.r << endl;
 	cout << "get gray time:" << time_gray << endl;
 	cout << "get darkchannel time:" << time_dc << endl;
 	cout << "get air light time:" << time_al << endl;
@@ -265,8 +268,8 @@ int getAirLightDcp(Mat &dark_img, Mat &src, float ratio, Pixel & air_light_pixel
 int getTransDcp(Mat &trans, Mat & dc, Pixel & air_light_pixel) {
 	long t0 = clock();
 	// A值如何取？从三通道到单通道如何映射A，这里采用均值
-	double A = (air_light_pixel.b + air_light_pixel.g + air_light_pixel.r) / 3.0;
-	double temp = 0;
+	float A = (air_light_pixel.b + air_light_pixel.g + air_light_pixel.r) / 3.0;
+	float temp = 0;
 
 	for (int i = 0; i < dc.rows; i++){
 		for (int j = 0; j < dc.cols; j++){

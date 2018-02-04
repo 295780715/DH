@@ -28,11 +28,11 @@ typedef struct {
 
 /*------------- 去雾参数 ------------------------*/
 /* 求取大气光值得百分比，论文默认为0.1% */
-const float AIRLIGHT_RATIO = 0.001;
+const float AIRLIGHT_RATIO = 0.001f;
 /* 去雾程度，论文默认参数为0.95 */
-const float DEHAZE_LEVEL = 0.95;
+const float DEHAZE_LEVEL = 0.95f;
 /* 透射率t的下限值T0，这里取0.1 */
-const float T0 = 0.1;
+const float T0 = 0.1f;
 
 /*------------- 功能函数 -----------------------*/
 #define MYMIN(a, b) (((a) <= (b)) ? (a) : (b))
