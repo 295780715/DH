@@ -54,7 +54,7 @@ int verticalMinfilter(Mat &dst, const Mat &src, int radius);
 /* 行方向 求取窗口最小值 */
 int horizonMinfilter(Mat &dst, const Mat &src, int radius);
 
-/*------------- DCP --------------------------*/
+/*------------- DCP-HE（SOFTMATTING & GUIDEFILTER） -----------*/
 /* 暗通道去雾 */
 int dehaze_dcp(Mat & src);
 /* 获取暗通道的动态窗口调节回调函数 */
@@ -70,6 +70,8 @@ int cmpByPixel(const void *p1, const void *p2);
 /* 根据暗通道图dc和大气光值A，计算透射率T */
 int getTransDcp(Mat &trans, Mat & dc, Pixel & air_light_pixel);
 
-/*----------------------------------------------*/
+/*--------------- DCP TEST ---------------------------*/
+int dehaze_dcp_test1(Mat & src);
+int dehaze_dcp_test2(Mat & src);
 
 #endif

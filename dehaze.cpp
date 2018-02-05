@@ -19,37 +19,40 @@ void readImage(Mat &output, char *img_name)
 暗通道去雾
 */
 int dehaze_dcp(Mat & src) {
-	// 初始窗口为3，可以自动调节，通过opencv的trackbar
-	int window = 3;
+	cout << "please input window size(0 means default setting):" << endl;
+	// 初始窗口为11，可以自动调节，通过opencv的trackbar
+	int window = 0;
 	int max_window = 51;
+	cin >> window;
+	if (window <= 0) {
+		window = 11;
+	}
 
-	// 1.read image,U8C3类型
-
-	// 2.获取灰度图
+	// 1.获取灰度图
 	Mat gray = Mat::zeros(src.size(), CV_8UC1);
 	int time_gray = getGrayByMin(src, gray);
 
-	// 3.获取暗通道图
+	// 2.获取暗通道图
 	Mat dc = Mat::zeros(src.size(), CV_8UC1);
 	int time_dc = getDarkChannel(gray, dc, window);
 
-	// 4.获取大气光值A
+	// 3.获取大气光值A
 	Pixel airLightPixel;
 	int time_al = getAirLightDcp(dc, src, AIRLIGHT_RATIO, airLightPixel);
 
-	// 5.获取透射图T，由于透射率t为浮点数，这里类型为32fc1,[0,1]之间值
+	// 4.获取透射图T，由于透射率t为浮点数，这里类型为32fc1,[0,1]之间值
 	Mat trans = Mat::zeros(src.size(), CV_32FC1);
 	int time_t = getTransDcp(trans, dc, airLightPixel);
 
-	// 6.获取精细的投射图T,两种方式，未实现
+	// 5.获取精细的投射图T,两种方式，未实现
 	// softmatting()
 	// guidefilter()
 
-	// 7.获取去雾图
+	// 6.获取去雾图
 	Mat hazefree = Mat::zeros(src.size(),CV_8UC3);
 	int time_dehaze = dehaze(hazefree, src, trans, airLightPixel, NULL);
 
-	// 8.显示
+	// 7.显示
 	imshow("原图", src);
 	imshow("灰度图", gray);
 	imshow("透射图",trans);
@@ -191,13 +194,13 @@ int getDarkChannel(const Mat & gray, Mat & dc, int window)
 	return clock() - t0;
 }
 
-/* qsort比较函数 */
+
 int cmpByPixel(const void *p1, const void *p2)
 {
 	return ((Pixel *)p2)->value - ((Pixel *)p1)->value;
 }
 
-/* 估计全局大气光 */
+
 int getAirLightDcp(Mat &dark_img, Mat &src, float ratio, Pixel & air_light_pixel)
 {
 	long t0 = clock();
@@ -264,7 +267,7 @@ int getAirLightDcp(Mat &dark_img, Mat &src, float ratio, Pixel & air_light_pixel
 	return clock() - t0;
 }
 
-/* 计算透射率 */
+
 int getTransDcp(Mat &trans, Mat & dc, Pixel & air_light_pixel) {
 	long t0 = clock();
 	// A值如何取？从三通道到单通道如何映射A，这里采用均值
@@ -281,7 +284,7 @@ int getTransDcp(Mat &trans, Mat & dc, Pixel & air_light_pixel) {
 	return clock() - t0;
 }
 
-/* 去雾 */
+
 int dehaze(Mat & hazefree, Mat & src, Mat & trans, Pixel & air_light_pixel, uchar *gamma_table)
 {
 	long t0 = clock();
@@ -308,4 +311,114 @@ int dehaze(Mat & hazefree, Mat & src, Mat & trans, Pixel & air_light_pixel, ucha
 		}
 	}
 	return clock() - t0;
+}
+
+
+/*
+暗通道去雾测试1：直接采用灰度图作为暗通道图去雾
+理由：暗通道图实际是灰度图最小值滤波得来的，在极端调节滤波半径为0时会怎样？
+*/
+int dehaze_dcp_test1(Mat & src) {
+	// 1.获取灰度图
+	Mat gray = Mat::zeros(src.size(), CV_8UC1);
+	int time_gray = getGrayByMin(src, gray);
+
+	// 2.获取暗通道图，直接采用灰度图
+	Mat dc = gray.clone();
+	int time_dc = 0;
+
+	// 3.获取大气光值A
+	Pixel airLightPixel;
+	int time_al = getAirLightDcp(dc, src, AIRLIGHT_RATIO, airLightPixel);
+
+	// 4.获取透射图T，由于透射率t为浮点数，这里类型为32fc1,[0,1]之间值
+	Mat trans = Mat::zeros(src.size(), CV_32FC1);
+	int time_t = getTransDcp(trans, dc, airLightPixel);
+
+	// 5.获取精细的投射图T,两种方式，未实现
+	// softmatting()
+	// guidefilter()
+
+	// 6.获取去雾图
+	Mat hazefree = Mat::zeros(src.size(), CV_8UC3);
+	int time_dehaze = dehaze(hazefree, src, trans, airLightPixel, NULL);
+
+	// 亮度增强——
+
+	// 7.显示
+	imshow("原图", src);
+	imshow("灰度图", gray);
+	imshow("透射图", trans);
+	imshow("暗通道图", dc);
+	imshow("去雾图", hazefree);
+
+	int time_total = time_gray + time_dc + time_al + time_t + time_dehaze;
+#ifdef DEBUG
+	// debug信息输出
+	cout << "A:" << airLightPixel.b << "," << airLightPixel.g << "," << airLightPixel.r << endl;
+	cout << "get gray time:" << time_gray << endl;
+	cout << "get darkchannel time:" << time_dc << endl;
+	cout << "get air light time:" << time_al << endl;
+	cout << "get T map time:" << time_t << endl;
+	cout << "restore time:" << time_dehaze << endl;
+	cout << "time total:" << time_total << endl;
+#endif
+
+	waitKey();
+
+	return time_total;
+}
+
+/*
+暗通道去雾测试2：直接用灰度图的反色图作为传输图T，再通过T求A
+*/
+int dehaze_dcp_test2(Mat & src) {
+	long t0 = clock();
+	// 1.获取灰度图
+	Mat gray = Mat::zeros(src.size(), CV_8UC1);
+	int time_gray = getGrayByMin(src, gray);
+
+	// 3.获取大气光值A
+	Pixel airLightPixel;
+	int time_al = 0;
+
+	// 4.获取透射图T，由于透射率t为浮点数，这里类型为32fc1,[0,1]之间值
+	Mat trans = 255 - gray;
+	trans.convertTo(trans, CV_32FC1);
+	normalize(trans, trans, 0, 1, CV_MINMAX);
+	int time_t = 0;
+
+	int x = 50;
+	int y = 50;
+	float t = trans.at<float>(x, y);
+	uchar i = gray.at<uchar>(x, y);
+	int a = i  / (1 - t);
+	airLightPixel.b = a;
+	airLightPixel.g = a;
+	airLightPixel.r = a;
+
+	// 6.获取去雾图
+	Mat hazefree = Mat::zeros(src.size(), CV_8UC3);
+	int time_dehaze = dehaze(hazefree, src, trans, airLightPixel, NULL);
+
+	// 7.显示
+	imshow("原图", src);
+	imshow("灰度图", gray);
+	imshow("透射图", trans);
+	imshow("去雾图", hazefree);
+
+	int time_total = clock()-t0;
+#ifdef DEBUG
+	// debug信息输出
+	cout << "A:" << airLightPixel.b << "," << airLightPixel.g << "," << airLightPixel.r << endl;
+	cout << "get gray time:" << time_gray << endl;
+	cout << "get air light time:" << time_al << endl;
+	cout << "get T map time:" << time_t << endl;
+	cout << "restore time:" << time_dehaze << endl;
+	cout << "time total:" << time_total << endl;
+#endif
+
+	waitKey();
+
+	return time_total;
 }
